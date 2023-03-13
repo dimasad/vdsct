@@ -23,37 +23,37 @@ class Client:
     def get_frame(self):
         _client_getframe(self._client_p)
 
-    def get_subject_count(self) -> int:
+    def subject_count(self) -> int:
         return _client_getsubjectcount(self._client_p)
 
-    def get_subject_name(self, index: int) -> bytes:
+    def subject_name(self, index: int) -> bytes:
         return _client_getsubjectname(self._client_p, index)
 
-    def get_segment_count(self, subject: bytes | str) -> int:
+    def segment_count(self, subject: bytes | str) -> int:
         return _client_getsegmentcount(self._client_p, subject)
 
-    def get_segment_name(self, subject: bytes | str, index: int) -> bytes:
+    def segment_name(self, subject: bytes | str, index: int) -> bytes:
         return _client_getsegmentname(self._client_p, subject, index)
 
-    def get_segment_translation(self, subject: bytes | str,
+    def segment_translation(self, subject: bytes | str,
                                 segment: bytes | str):
         return _client_getsegmentglobaltranslation(
             self._client_p, subject, segment
         )
 
-    def get_segment_rotation_quaternion(self, subject: bytes | str,
+    def segment_rotation_quaternion(self, subject: bytes | str,
                                         segment: bytes | str):
         return _client_getsegmentglobalrotationquaternion(
             self._client_p, subject, segment
         )
 
     def iter_segments(self):
-        nsubj = self.get_subject_count()
+        nsubj = self.subject_count()
         for i in range(nsubj):
-            subj = self.get_subject_name(i)
-            nseg = self.get_segment_count(subj)
+            subj = self.subject_name(i)
+            nseg = self.segment_count(subj)
             for j in range(nseg):
-                seg = self.get_segment_name(subj, j)
+                seg = self.segment_name(subj, j)
                 yield (subj, seg)
 
 

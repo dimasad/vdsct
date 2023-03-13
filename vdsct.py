@@ -28,12 +28,24 @@ class Client:
 
     def get_subject_name(self, index: int) -> bytes:
         return _client_getsubjectname(self._client_p, index)
-    
+
     def get_segment_count(self, subject: bytes | str) -> int:
         return _client_getsegmentcount(self._client_p, subject)
-    
+
     def get_segment_name(self, subject: bytes | str, index: int) -> bytes:
         return _client_getsegmentname(self._client_p, subject, index)
+
+    def get_segment_translation(self, subject: bytes | str,
+                                segment: bytes | str):
+        return _client_getsegmentglobaltranslation(
+            self._client_p, subject, segment
+        )
+
+    def get_segment_rotation_quaternion(self, subject: bytes | str,
+                                        segment: bytes | str):
+        return _client_getsegmentglobalrotationquaternion(
+            self._client_p, subject, segment
+        )
 
     def iter_segments(self):
         nsubj = self.get_subject_count()
@@ -55,11 +67,22 @@ class Output_GetSegmentCount(ctypes.Structure):
                 ("SegmentCount", ctypes.c_uint)]
 
 
+class Output_GetSegmentGlobalTranslation(ctypes.Structure):
+    _fields_ = [("Result", ctypes.c_int),
+                ("Translation", ctypes.c_double * 3),
+                ("Occluded", ctypes.c_uint)]
+
+
+class Output_GetSegmentGlobalRotationQuaternion(ctypes.Structure):
+    _fields_ = [("Result", ctypes.c_int),
+                ("Rotation", ctypes.c_double * 4)]
+
+
 def load_library(path=None):
     global _so
     # Load the library
     if path is None:
-        path = (ctypes.util.find_library("ViconDataStreamSDK_C") 
+        path = (ctypes.util.find_library("ViconDataStreamSDK_C")
                 or "libViconDataStreamSDK_C.so")
     _so = ctypes.cdll.LoadLibrary(path)
 
@@ -76,6 +99,14 @@ def load_library(path=None):
     _so.Client_GetSegmentName.argtypes = [
         c_void_p, c_char_p, c_int, c_int, c_char_p
     ]
+    _so.Client_GetSegmentGlobalTranslation.argtypes = [
+        c_void_p, c_char_p, c_char_p, c_void_p
+    ]
+    _so.Client_GetSegmentGlobalTranslation.restype = None
+    _so.Client_GetSegmentGlobalRotationQuaternion.argtypes = [
+        c_void_p, c_char_p, c_char_p, c_void_p
+    ]
+    _so.Client_GetSegmentGlobalRotationQuaternion.restype = None
 
 
 def so():
@@ -86,7 +117,7 @@ def so():
 
 def assert_success(code):
     if code != SUCCESS_CODE:
-        raise RuntimeError(RESULTS[code])
+        raise RESULTS[code]
 
 
 def _client_create():
@@ -145,6 +176,38 @@ def _client_getsegmentcount(client_p, subject):
     return out.SegmentCount
 
 
+def _client_getsegmentglobaltranslation(client_p, subject, segment):
+    """Low-level interface to ViconDataStreamSDK_C Client_GetSegmentGlobalTranslation"""
+    # Convert subject to bytes, if str
+    if isinstance(subject, str):
+        subject = subject.encode()
+
+    # Convert segment to bytes, if str
+    if isinstance(segment, str):
+        segment = segment.encode()
+
+    out = Output_GetSegmentGlobalTranslation()
+    so().Client_GetSegmentGlobalTranslation(client_p, subject, segment, ctypes.byref(out))
+    assert_success(out.Result)
+
+    return out.Translation, out.Occluded
+
+def _client_getsegmentglobalrotationquaternion(client_p, subject, segment):
+    """Low-level interface to ViconDataStreamSDK_C Client_GetSegmentGlobalRotationQuaternion"""
+    # Convert subject to bytes, if str
+    if isinstance(subject, str):
+        subject = subject.encode()
+
+    # Convert segment to bytes, if str
+    if isinstance(segment, str):
+        segment = segment.encode()
+
+    out = Output_GetSegmentGlobalRotationQuaternion()
+    so().Client_GetSegmentGlobalRotationQuaternion(client_p, subject, segment, ctypes.byref(out))
+    assert_success(out.Result)
+    return out.Rotation
+
+
 def _client_getsegmentname(client_p, subject, index):
     name = ctypes.create_string_buffer(128)
     r = so().Client_GetSegmentName(client_p, subject, index, len(name), name)
@@ -167,34 +230,123 @@ _so = None
 SUCCESS_CODE = 2
 """Success code in the Vicon CEnum."""
 
+
+class ViconException(Exception):
+    """Base class to all Vicon DataStream SDK exceptions."""
+
+class Unknown(ViconException):
+    pass
+
+class NotImplemented(ViconException):
+    pass
+
+class Success(ViconException):
+    pass
+
+class InvalidHostName(ViconException):
+    pass
+
+class InvalidMulticastIP(ViconException):
+    pass
+
+class ClientAlreadyConnected(ViconException):
+    pass
+
+class ClientConnectionFailed(ViconException):
+    pass
+
+class ServerAlreadyTransmittingMulticast(ViconException):
+    pass
+
+class ServerNotTransmittingMulticast(ViconException):
+    pass
+
+class NotConnected(ViconException):
+    pass
+
+class NoFrame(ViconException):
+    pass
+
+class InvalidIndex(ViconException):
+    pass
+
+class InvalidCameraName(ViconException):
+    pass
+
+class InvalidSubjectName(ViconException):
+    pass
+
+class InvalidSegmentName(ViconException):
+    pass
+
+class InvalidMarkerName(ViconException):
+    pass
+
+class InvalidDeviceName(ViconException):
+    pass
+
+class InvalidDeviceOutputName(ViconException):
+    pass
+
+class InvalidLatencySampleName(ViconException):
+    pass
+
+class CoLinearAxes(ViconException):
+    pass
+
+class LeftHandedAxes(ViconException):
+    pass
+
+class HapticAlreadySet(ViconException):
+    pass
+
+class EarlyDataRequested(ViconException):
+    pass
+
+class LateDataRequested(ViconException):
+    pass
+
+class InvalidOperation(ViconException):
+    pass
+
+class NotSupported(ViconException):
+    pass
+
+class ConfigurationFailed(ViconException):
+    pass
+
+class NotPresent(ViconException):
+    pass
+
+
 RESULTS = [
-    'Unknown',
-    'NotImplemented',
-    'Success',
-    'InvalidHostName',
-    'InvalidMulticastIP',
-    'ClientAlreadyConnected',
-    'ClientConnectionFailed',
-    'ServerAlreadyTransmittingMulticast',
-    'ServerNotTransmittingMulticast',
-    'NotConnected',
-    'NoFrame',
-    'InvalidIndex',
-    'InvalidCameraName',
-    'InvalidSubjectName',
-    'InvalidSegmentName',
-    'InvalidMarkerName',
-    'InvalidDeviceName',
-    'InvalidDeviceOutputName',
-    'InvalidLatencySampleName',
-    'CoLinearAxes',
-    'LeftHandedAxes',
-    'HapticAlreadySet',
-    'EarlyDataRequested',
-    'LateDataRequested',
-    'InvalidOperation',
-    'NotSupported',
-    'ConfigurationFailed',
-    'NotPresent',
+    Unknown,
+    NotImplemented,
+    Success,
+    InvalidHostName,
+    InvalidMulticastIP,
+    ClientAlreadyConnected,
+    ClientConnectionFailed,
+    ServerAlreadyTransmittingMulticast,
+    ServerNotTransmittingMulticast,
+    NotConnected,
+    NoFrame,
+    InvalidIndex,
+    InvalidCameraName,
+    InvalidSubjectName,
+    InvalidSegmentName,
+    InvalidMarkerName,
+    InvalidDeviceName,
+    InvalidDeviceOutputName,
+    InvalidLatencySampleName,
+    CoLinearAxes,
+    LeftHandedAxes,
+    HapticAlreadySet,
+    EarlyDataRequested,
+    LateDataRequested,
+    InvalidOperation,
+    NotSupported,
+    ConfigurationFailed,
+    NotPresent,
 ]
 """ViconDataStreamSDK result codes enum (CEnum)."""

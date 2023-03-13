@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vdsct"
+version = "0.1.dev1"
+authors = [
+  { name="Dimas Abreu Archanjo Dutra", email="dimas.dutra@mail.wvu.edu" },
+]
+description = "Vicon DataStream SDK ctypes interface"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/dimasad/vdsct"

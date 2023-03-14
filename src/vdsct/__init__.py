@@ -237,7 +237,6 @@ def client(host):
     c = Client()
     try:
         c.connect(host)
-        c.enable_segment_data()
         yield c
     finally:
         c.destroy()

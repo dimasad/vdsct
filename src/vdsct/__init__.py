@@ -20,6 +20,9 @@ class Client:
     def connect(self, host: bytes | str) -> None:
         _client_connect(self._client_p, host)
 
+    def enable_segment_data(self):
+        _client_enablesegmentdata(self._client_p)
+
     def get_frame(self):
         _client_getframe(self._client_p)
 
@@ -58,24 +61,29 @@ class Client:
 
 
 class Output_GetSubjectCount(ctypes.Structure):
+    _pack_ = 1
     _fields_ = [("Result", ctypes.c_int),
                 ("SubjectCount", ctypes.c_uint)]
 
 
 class Output_GetSegmentCount(ctypes.Structure):
+    _pack_ = 1
     _fields_ = [("Result", ctypes.c_int),
                 ("SegmentCount", ctypes.c_uint)]
 
 
 class Output_GetSegmentGlobalTranslation(ctypes.Structure):
+    _pack_ = 1
     _fields_ = [("Result", ctypes.c_int),
                 ("Translation", ctypes.c_double * 3),
-                ("Occluded", ctypes.c_uint)]
+                ("Occluded", ctypes.c_int)]
 
 
 class Output_GetSegmentGlobalRotationQuaternion(ctypes.Structure):
+    _pack_ = 1
     _fields_ = [("Result", ctypes.c_int),
-                ("Rotation", ctypes.c_double * 4)]
+                ("Rotation", ctypes.c_double * 4),
+                ("Occluded", ctypes.c_int)]
 
 
 def load_library(path=None):
@@ -87,11 +95,12 @@ def load_library(path=None):
     _so = ctypes.cdll.LoadLibrary(path)
 
     # Configure the functions
-    from ctypes import c_void_p, c_int, c_char_p
+    from ctypes import c_void_p, c_int, c_char_p, POINTER
     _so.Client_Create.restype = c_void_p
     _so.Client_Connect.argtypes = [c_void_p, c_char_p]
     _so.Client_Destroy.argtypes = [c_void_p]
     _so.Client_Destroy.restype = None
+    _so.Client_EnableSegmentData.argtypes = [c_void_p]
     _so.Client_GetFrame.argtypes = [c_void_p]
     _so.Client_GetSubjectCount.argtypes = [c_void_p, c_void_p]
     _so.Client_GetSubjectName.argtypes = [c_void_p, c_int, c_int, c_char_p]
@@ -100,11 +109,13 @@ def load_library(path=None):
         c_void_p, c_char_p, c_int, c_int, c_char_p
     ]
     _so.Client_GetSegmentGlobalTranslation.argtypes = [
-        c_void_p, c_char_p, c_char_p, c_void_p
+        c_void_p, c_char_p, c_char_p,
+        POINTER(Output_GetSegmentGlobalTranslation)
     ]
     _so.Client_GetSegmentGlobalTranslation.restype = None
     _so.Client_GetSegmentGlobalRotationQuaternion.argtypes = [
-        c_void_p, c_char_p, c_char_p, c_void_p
+        c_void_p, c_char_p, c_char_p,
+        POINTER(Output_GetSegmentGlobalRotationQuaternion)
     ]
     _so.Client_GetSegmentGlobalRotationQuaternion.restype = None
 
@@ -140,6 +151,12 @@ def _client_connect(client_p, host: bytes | str):
         host = host.encode()
 
     r = so().Client_Connect(client_p, host)
+    assert_success(r)
+
+
+def _client_enablesegmentdata(client_p):
+    """Low-level interface to ViconDataStreamSDK_C Client_EnableSegmentData"""
+    r = so().Client_EnableSegmentData(client_p)
     assert_success(r)
 
 
@@ -216,9 +233,11 @@ def _client_getsegmentname(client_p, subject, index):
 
 
 @contextlib.contextmanager
-def client():
+def client(host):
     c = Client()
     try:
+        c.connect(host)
+        c.enable_segment_data()
         yield c
     finally:
         c.destroy()

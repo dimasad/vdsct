@@ -222,7 +222,7 @@ def _client_getsegmentglobalrotationquaternion(client_p, subject, segment):
     out = Output_GetSegmentGlobalRotationQuaternion()
     so().Client_GetSegmentGlobalRotationQuaternion(client_p, subject, segment, ctypes.byref(out))
     assert_success(out.Result)
-    return out.Rotation
+    return out.Rotation, out.Occluded
 
 
 def _client_getsegmentname(client_p, subject, index):
@@ -233,7 +233,7 @@ def _client_getsegmentname(client_p, subject, index):
 
 
 @contextlib.contextmanager
-def client(host):
+def client(host) -> Client:
     c = Client()
     try:
         c.connect(host)
